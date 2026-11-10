@@ -17,6 +17,8 @@
 | **4** | **리소스 정리 체크리스트 1개** (MD + 증빙 스크린샷) | [`docs/cleanup-checklist.md`](./docs/cleanup-checklist.md) + [`docs/screenshots/cleanup-billing-check.png`](./docs/screenshots/cleanup-billing-check.png) | ✅ 완료 |
 | **보너스 1** | **HTTPS 인증서 적용** (Let's Encrypt / Certbot) | [`scripts/setup-https.sh`](./scripts/setup-https.sh) / [`nginx/default-ssl.conf`](./nginx/default-ssl.conf) | ✅ 완료 |
 | **보너스 2** | **Docker 컨테이너 웹 배포** (`docker ps` + 외부 접속 검증) | [`Dockerfile`](./Dockerfile) / [`docker-compose.yml`](./docker-compose.yml) / [`docs/screenshots/docker-ps-check.png`](./docs/screenshots/docker-ps-check.png) | ✅ 완료 |
+| **🎤 평가 대본** | **퍼실리테이터 1:1 평가 발표 대본 & 비전공자 해설집** | [`docs/evaluation-script.md`](./docs/evaluation-script.md) | ✅ 완료 |
+| **🔍 자동 검증** | **평가자용 미션 요구사항 자동 채점/검증 스크립트** | [`scripts/evaluate-mission.py`](./scripts/evaluate-mission.py) (`python scripts/evaluate-mission.py`) | ✅ 완료 |
 
 ---
 

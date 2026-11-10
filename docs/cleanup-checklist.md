@@ -63,3 +63,4 @@ aws ec2 describe-vpcs --region ap-northeast-2 \
 
 ### (2) 리소스 정리 완료 및 Billing 확인 스크린샷
 ![리소스 정리 및 Billing 확인 스크린샷](./screenshots/cleanup-billing-check.png)
+

@@ -1,10 +1,30 @@
+# ==============================================================================
+# [파일 이름] docker-compose.yml (보너스 과제 2: 컨테이너 원클릭 실행 설계도)
+# [실생활 비유] 긴 'docker run -d --name ... -p 80:80 ...' 명령어를 매번 외워서 치는 대신,
+#              버튼 하나('docker compose up -d')로 가게를 오픈할 수 있게 적어둔 '자동 실행 주문서'입니다.
+# ==============================================================================
+
+# services: 실행할 컨테이너(서비스)들의 목록을 적는 최상위 구역입니다.
 services:
+  # codyssey-web: 우리가 실행할 웹 서비스의 별명입니다.
   codyssey-web:
+    # build: 현재 폴더(.)에 있는 Dockerfile 조리법을 보고 이미지를 직접 구우라(빌드하라)는 설정입니다.
     build:
-      context: .
-      dockerfile: Dockerfile
+      context: .              # '.'은 현재 프로젝트 폴더(5-1-)를 뜻합니다.
+      dockerfile: Dockerfile  # 사용할 조리법 파일 이름입니다.
+
+    # image: 빌드된 컨테이너 이미지에 붙여줄 이름표(이미지명:버전태그)입니다. (README.md 기재 항목)
     image: codyssey-web:latest
+
+    # container_name: 실제로 실행될 컨테이너 상자의 고유 이름입니다. ('docker ps'에 표시되는 이름)
     container_name: codyssey-web
+
+    # ports: [가장 중요!] 호스트(EC2 서버) 출입구와 컨테이너 내부 출입구를 연결하는 포트 매핑입니다.
+    # - 왼쪽 "80"  : 외부 인터넷 손님이 찾아오는 EC2 인스턴스의 80번 포트
+    # - 오른쪽 "80": 컨테이너 안에서 Nginx가 기다리고 있는 80번 포트
     ports:
       - "80:80"
+
+    # restart: unless-stopped
+    # - 내가 직접 중지(stop)시키지 않는 한, 서버가 재부팅되거나 오류가 나도 자동으로 다시 켜지게 합니다.
     restart: unless-stopped

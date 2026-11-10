@@ -52,3 +52,4 @@
 | **4. 조치 내용** | `AdministratorAccess`(관리자 전체 권한)를 부여하는 손쉬운 우회 방식을 지양하고, 최소권한 원칙을 유지한 채 `iam/least-privilege-policy.json`의 서울 리전(`ap-northeast-2`) 제한 Statement 안에 `ec2:CreateTags`, `ec2:DeleteTags` 액션만 정밀하게 추가함. (S3, RDS, IAM 등 무관한 서비스는 `ExplicitDeny` 유지) |
 | **5. 결과** | `codyssey-cloud-user` 계정으로 태그가 포함된 VPC, Subnet, IGW, Security Group, EC2 리소스가 오류 없이 정상 생성됨을 확인. |
 | **6. 재발 방지** | IAM 최소권한 정책 설계 시 주 작업(`RunInstances`, `CreateVpc`)뿐만 아니라 리소스 식별·관리를 위해 함께 호출되는 보조 작업(`CreateTags`, `Describe*`)을 함께 정의하고, 권한 오류 발생 시 무조건 권한을 넓히지 않고 `sts decode-authorization-message` 또는 CloudTrail 로그로 정확한 누락 Action만 핀셋 추가한다. |
+
