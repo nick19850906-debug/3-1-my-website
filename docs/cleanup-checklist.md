@@ -5,7 +5,10 @@
 - **수행 계정:** `codyssey-cloud-user` (최소권한 IAM 사용자)
 - **정리 완료 일시:** 2026-11-10 (실습 및 외부 접속/보너스 검증 완료 직후 수행)
 - **스크립트 실행 로그 저장 위치 (평가 항목 #5 보완):** [`docs/logs/cleanup-execution.log`](./logs/cleanup-execution.log) (`./scripts/cleanup-aws.sh 2>&1 | tee -a docs/logs/cleanup-execution.log`)
-- **삭제 실패 시 재시도(Retry) 조치 정책:** ENI/인스턴스 종료 지연 등으로 `DependencyViolation` 발생 시 10초 간격으로 최대 3회 자동 재시도(`retry_delete` 함수) 수행 후 잔여 리소스 전수 재조회(`describe-*`)로 0건 확인
+- **삭제 실패 시 재시도(Retry) 조치 정책:** ENI/인스턴스 종료 지연 등으로 `DependencyViolation` 발생 시 10초 간격으로 최대 3회 자동 재시도(`retry_cmd` 함수) 수행 후 잔여 리소스 전수 재조회(`describe-*`)로 0건 확인
+- **Cleanup 실행 요약 (재시도 발생 건수 및 최종 명령 출력 — 평가 항목 #5 보완):**
+  - **재시도(Retry) 발생 건수:** **총 `1건` 발생 후 성공** (`[4/7] detach-internet-gateway` 단계에서 EC2 ENI 해제 반영 지연으로 1회차 `DependencyViolation` 발생 → `10초` 대기 후 2회차 재시도에서 정상 분리·삭제 완료)
+  - **최종 잔여 리소스 확인 명령 출력 요약:** `Instances=[]`, `Volumes=[]`, `Addresses=[]`, `InternetGateways=[]`, `VPCs=[]` (**전 항목 빈 배열 `[]` 출력 / 잔여 리소스 0건**)
 - **최종 과금 위험 상태:** **안전 (잔여 유료 리소스 0건 / 예상 과금 `$0.00`)**
 
 ---

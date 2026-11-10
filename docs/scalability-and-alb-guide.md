@@ -95,4 +95,32 @@ sudo tail -n 50 /var/log/nginx/error.log
 | :--- | :--- | :--- |
 | **ALB 시간당 고정 요금** | 약 **`$0.0252 / 시간`** (월 약 `$18.4` 수준)<br>*(신규 계정 프리티어: 월 750시간 무료 제공)* | EC2를 모두 종료(`Terminate`)했더라도 **ALB가 삭제되지 않고 남아 있으면 매시간 고정 요금이 부과**되므로 실습 종료 시 반드시 최우선 삭제 대상에 포함해야 함 |
 | **LCU (용량 단위) 요금** | **`$0.008 / LCU-시간`**<br>(신규 연결 수, 활성 연결 수, 처리 바이트, 규칙 평가 수 중 최댓값 기준) | 트래픽 스파이크 또는 DDoS 공격 시 LCU 요금이 증가할 수 있으므로 AWS Budgets 예산 알림 설정 필수 |
-| **다중 EC2 인스턴스 요금** | 프리티어 월 750시간은 **모든 micro 인스턴스 합산 시간** 기준 (2대 동시 가동 시 375시간 만에 소진) | 평상시에는 최소 대수(`Min=1, Desired=1`)로 운영하고, CPU `> 70%` 병목 시에만 `Max=2`로 늘리는 Auto Scaling 정책 권장 |
+| **다중 EC2 인스턴스 요금** | 프리티어 월 750시간은 **모든 micro 인스턴스 합산 시간** 기준 (2대 동시 가동 시 375시간 만에 소진) | 평상시에는 최소 대수(`Min=1, Desired=1`)로 운영하고, CPU `> 70%` 병목 시에만 `Max=2~4`로 늘리는 Auto Scaling 정책 권장 |
+
+---
+
+## 3. 권장 Auto Scaling 정책 (임계치 → 스케일 아웃/인 규칙 요약 — 평가 항목 #16 보완)
+
+ALB 뒷단의 EC2 Target Group을 **Auto Scaling Group (ASG)** 으로 묶어 트래픽 변화에 따라 인스턴스 수를 자동으로 증감시키는 표준 운영 기준입니다.
+
+| 정책 구분 | 권장 설정값 (샘플) | 세부 동작 규칙 및 설정 근거 |
+| :---: | :--- | :--- |
+| **인스턴스 용량 권고**<br>(`Min / Desired / Max`) | • **평시(개발/프리티어):** `Min=1, Desired=1, Max=2`<br>• **운영(고가용성 Multi-AZ):** `Min=2, Desired=2, Max=4` | 최소 `1~2`대로 기본 가용성을 유지하고, 급격한 트래픽 폭주나 오작동 시 과금 폭탄을 막기 위해 상한선(`Max=4`)을 반드시 지정 |
+| **Scale-Out 규칙**<br>(확장 임계치) | **평균 `CPUUtilization > 70%`가 `5분`(1분×5회) 연속 지속 시 `+1대` 증설**<br>*(보조 지표: ALB `RequestCountPerTarget > 1,000 req/min`)* | `80%` 포화 도달 전에 선제적으로 인스턴스를 부팅(Warm-up `180초`, Cooldown `300초`)하여 응답 지연 예방 |
+| **Scale-In 규칙**<br>(축소 임계치) | **평균 `CPUUtilization < 30%`가 `15분` 연속 지속 시 `-1대` 축소** | 트래픽이 빠진 뒤 너무 빨리 서버를 줄여 다시 늘어나는 플래핑(Flapping) 현상을 방지하기 위해 축소 대기 시간은 길게(`15분`) 설정 |
+
+```bash
+# [참고] AWS CLI를 통한 Auto Scaling Group 목표 추적(Target Tracking: 평균 CPU 70% 유지) 정책 적용 예시
+aws autoscaling put-scaling-policy \
+  --region ap-northeast-2 \
+  --auto-scaling-group-name codyssey-web-asg \
+  --policy-name cpu-70-target-tracking \
+  --policy-type TargetTrackingScaling \
+  --target-tracking-configuration '{
+    "PredefinedMetricSpecification": { "PredefinedMetricType": "ASGAverageCPUUtilization" },
+    "TargetValue": 70.0,
+    "ScaleOutCooldown": 300,
+    "ScaleInCooldown": 900
+  }'
+```
+

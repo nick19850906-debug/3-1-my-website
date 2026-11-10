@@ -3,10 +3,15 @@
 - **프로젝트:** 내가 만든 웹사이트를 인터넷에 올려 누구나 쓰게 하기 (AWS 클라우드 인프라 구축 및 배포)
 - **리전(Region):** 서울 리전 (`ap-northeast-2`)
 - **대상 환경:** VPC (`10.0.0.0/16`), Public Subnet (`10.0.1.0/24`), Internet Gateway, EC2 (`t3.micro`, Ubuntu 24.04 LTS), Nginx / Docker (`codyssey-web:latest`)
-- **수집된 원본 CLI / CloudTrail 로그 파일 경로 (평가 항목 #13 보완):**
+- **수집된 원본 CLI / CloudTrail 로그 파일 경로 및 민감정보 마스킹 규칙 (평가 항목 #13 보완):**
   - 통합 CLI 및 CloudTrail 감사 원본 로그: [`docs/logs/troubleshooting-cli-cloudtrail.log`](./logs/troubleshooting-cli-cloudtrail.log)
   - 외부/내부 `curl` 헬스체크 원본 로그: [`docs/logs/curl-health-check.log`](./logs/curl-health-check.log)
   - EC2 내부 웹 서버 에러/액세스 로그 경로: `/var/log/nginx/error.log`, `/var/log/nginx/access.log`
+  - **🔒 공개 제출용 로그 민감정보 마스킹(Masking) 저장 규칙:** GitHub 등 공개 저장소에 CLI/CloudTrail 로그를 커밋할 때는 개인정보 및 계정 보안 보호를 위해 아래 정규식(`sed -E`) 기반 마스킹 규칙을 의무 적용하여 저장합니다.
+    1. **AWS 12자리 Account ID:** 앞 8자리를 마스킹 처리 (`123456789012` → `********9012`)
+    2. **IAM Access Key / Principal ID:** 앞 5자리 식별자(`AKIA*` / `AIDA*`) 외 마스킹 (`AIDAX***************`)
+    3. **클라이언트 공인 IP (제3자/개인 네트워크):** 마지막 옥텟 마스킹 표기 병행 (`211.234.118.***` 또는 실습 종료 후 회수된 임시 IP만 기재)
+    4. **STS 암호화 서명 토큰 / 세션 토큰:** `<MASKED_STS_ENCODED_TOKEN>`으로 치환 후 저장
 
 ---
 

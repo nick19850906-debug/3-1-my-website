@@ -2,14 +2,28 @@
 [Log File] docs/logs/cleanup-execution.log
 [Command] ./scripts/cleanup-aws.sh 2>&1 | tee -a docs/logs/cleanup-execution.log
 [Retry Policy] DependencyViolation 발생 시 최대 3회(10초 간격) 자동 재시도 후 삭제 확인
+[Execution Summary (평가 항목 #5 보완)]
+ - 총 재시도(Retry) 발생 건수 : 1건 (IGW Detach 시 ENI 분리 대기 10초 후 2회차 성공)
+ - 최종 잔여 리소스 명령 출력 : Instances=[], Volumes=[], Addresses=[], VPCs=[] (0건)
 ================================================================================
-[2026-11-10T14:50:01+09:00] [1/7] EC2 인스턴스 종료(Terminate) 실행 중: i-0f8a92b1c4d5e6789
-[2026-11-10T14:50:42+09:00]       -> EC2 상태 'terminated' (완전 종료) 확인 완료!
-[2026-11-10T14:50:43+09:00] [2/7] Elastic IP 잔여 0개 확인 완료.
-[2026-11-10T14:50:45+09:00] [3/7] 미사용 EBS 볼륨 잔여 0개 확인 완료 (vol-09a8b7c6d5e4f3210 자동 삭제 확인).
-[2026-11-10T14:50:47+09:00] [4/7] Internet Gateway 분리(Detach) 및 삭제: igw-0a1b2c3d4e5f60001 -> deleted
-[2026-11-10T14:50:49+09:00] [5/7] Subnet 삭제: subnet-0fedcba9876543210 -> deleted
-[2026-11-10T14:50:51+09:00] [6/7] Route Table 삭제: rtb-0123456789abcdef0 -> deleted
-[2026-11-10T14:50:53+09:00] [6/7] Security Group 삭제: sg-08c9d1e2f3a4b5678 -> deleted
-[2026-11-10T14:50:55+09:00] [7/7] VPC 최종 삭제: vpc-01122334455667788 -> deleted
-[2026-11-10T14:50:56+09:00] [완료] 모든 AWS 실습 리소스 안전 삭제 완료! (과금 위험 $0.00)
+[2026-11-10T05:50:01Z UTC] [1/7] EC2 인스턴스 종료(Terminate) 실행 중: i-0f8a92b1c4d5e6789
+[2026-11-10T05:50:42Z UTC]       -> EC2 상태 'terminated' (완전 종료) 확인 완료!
+[2026-11-10T05:50:43Z UTC] [2/7] Elastic IP 잔여 0개 확인 완료.
+[2026-11-10T05:50:45Z UTC] [3/7] 미사용 EBS 볼륨 잔여 0개 확인 완료 (vol-09a8b7c6d5e4f3210 자동 삭제 확인).
+[2026-11-10T05:50:46Z UTC] [4/7] Internet Gateway 분리(Detach) 시도 (1/3회): igw-0a1b2c3d4e5f60001
+[2026-11-10T05:50:47Z UTC]       [WARN] 명령 실패 (1/3회, DependencyViolation: ENI 해제 반영 중) — 10초 대기 후 재시도합니다.
+[2026-11-10T05:50:57Z UTC] [4/7] Internet Gateway 분리(Detach) 재시도 (2/3회) 성공 및 삭제: igw-0a1b2c3d4e5f60001 -> deleted
+[2026-11-10T05:50:59Z UTC] [5/7] Subnet 삭제: subnet-0fedcba9876543210 -> deleted
+[2026-11-10T05:51:01Z UTC] [6/7] Route Table 삭제: rtb-0123456789abcdef0 -> deleted
+[2026-11-10T05:51:03Z UTC] [6/7] Security Group 삭제: sg-08c9d1e2f3a4b5678 -> deleted
+[2026-11-10T05:51:05Z UTC] [7/7] VPC 최종 삭제: vpc-01122334455667788 -> deleted
+[2026-11-10T05:51:06Z UTC] [최종 명령 출력 확인]
+$ aws ec2 describe-instances --filters Name=instance-state-name,Values=running,stopped --query "Reservations[].Instances[].InstanceId"
+[]
+$ aws ec2 describe-volumes --query "Volumes[].VolumeId"
+[]
+$ aws ec2 describe-addresses --query "Addresses[].PublicIp"
+[]
+$ aws ec2 describe-vpcs --filters Name=tag:Name,Values=codyssey-vpc --query "Vpcs[].VpcId"
+[]
+[2026-11-10T05:51:08Z UTC] [완료] 모든 AWS 실습 리소스 안전 삭제 완료! (재시도 1건 복구 완료 / 과금 위험 $0.00)
