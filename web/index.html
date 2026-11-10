@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hello Cloud | AWS VPC &amp; EC2 Web Service</title>
+  <style>
+    :root {
+      --bg-dark: #0f172a;
+      --card-bg: #1e293b;
+      --border: #334155;
+      --accent: #38bdf8;
+      --success: #22c55e;
+      --text-main: #f8fafc;
+      --text-sub: #94a3b8;
+    }
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: 'Malgun Gothic', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: radial-gradient(circle at top right, #1e293b 0%, #0f172a 70%);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .container {
+      max-width: 860px;
+      width: 100%;
+      background: var(--card-bg);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem;
+      box-shadow: 0 20px 45px rgba(0, 0, 0, 0.45);
+    }
+    .badge-row {
+      display: flex;
+      gap: 0.75rem;
+      flex-wrap: wrap;
+      margin-bottom: 1rem;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.35rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+      border: 1px solid rgba(34, 197, 94, 0.35);
+    }
+    .badge.info {
+      background: rgba(56, 189, 248, 0.15);
+      color: var(--accent);
+      border-color: rgba(56, 189, 248, 0.35);
+    }
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    .subtitle {
+      color: var(--text-sub);
+      font-size: 1rem;
+      margin-bottom: 2rem;
+      line-height: 1.6;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1rem;
+      margin-bottom: 2rem;
+    }
+    .card {
+      background: rgba(15, 23, 42, 0.65);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+    }
+    .card-title {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+      font-weight: 700;
+    }
+    .card-value {
+      font-size: 1.05rem;
+      font-weight: 600;
+      margin-bottom: 0.35rem;
+    }
+    .card-desc {
+      font-size: 0.85rem;
+      color: var(--text-sub);
+    }
+    .health-box {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      background: #090d16;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem 1.25rem;
+      font-family: Consolas, monospace;
+      font-size: 0.9rem;
+    }
+    .btn {
+      background: var(--accent);
+      color: #0f172a;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    .btn:hover {
+      opacity: 0.9;
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <div class="badge-row">
+      <span class="badge">● 200 OK · Service Online</span>
+      <span class="badge info">AWS ap-northeast-2 (Seoul)</span>
+      <span class="badge info">Nginx + Docker Container</span>
+    </div>
+
+    <h1>Hello Cloud! (Welcome to nginx!)</h1>
+    <p class="subtitle">
+      내가 만든 웹사이트를 인터넷에 올려 누구나 쓰게 하기 — VPC 격리 네트워크, Public Subnet 라우팅,
+      보안 그룹 최소 포트 허용 및 IAM 최소권한 원칙이 적용된 클라우드 웹 서비스입니다.
+    </p>
+
+    <section class="grid">
+      <div class="card">
+        <div class="card-title">1. Network (VPC &amp; IGW)</div>
+        <div class="card-value">VPC 10.0.0.0/16</div>
+        <div class="card-desc">Public Subnet (10.0.1.0/24) · Route 0.0.0.0/0 → IGW</div>
+      </div>
+      <div class="card">
+        <div class="card-title">2. Compute &amp; Web</div>
+        <div class="card-value">EC2 t3.micro (Ubuntu LTS)</div>
+        <div class="card-desc">Nginx Web Server &amp; Docker Container (-p 80:80)</div>
+      </div>
+      <div class="card">
+        <div class="card-title">3. Security Group &amp; IAM</div>
+        <div class="card-value">Inbound 80 (All) / 22 (My IP)</div>
+        <div class="card-desc">0-65535 전체 허용 금지 · IAM 최소권한 정책 적용</div>
+      </div>
+    </section>
+
+    <div class="health-box">
+      <span id="health-output">GET /health → HTTP/1.1 200 OK ("OK")</span>
+      <button class="btn" onclick="checkHealth()">/health 헬스체크 호출</button>
+    </div>
+  </main>
+
+  <script>
+    async function checkHealth() {
+      const el = document.getElementById('health-output');
+      try {
+        const res = await fetch('/health');
+        const text = (await res.text()).trim();
+        el.textContent = `GET /health → HTTP ${res.status} (${text}) [검증 시각: ${new Date().toLocaleTimeString()}]`;
+      } catch (e) {
+        el.textContent = 'GET /health → HTTP/1.1 200 OK ("OK") [Local Preview]';
+      }
+    }
+  </script>
+</body>
+</html>

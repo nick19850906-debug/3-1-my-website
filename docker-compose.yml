@@ -1,0 +1,10 @@
+services:
+  codyssey-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: codyssey-web:latest
+    container_name: codyssey-web
+    ports:
+      - "80:80"
+    restart: unless-stopped
