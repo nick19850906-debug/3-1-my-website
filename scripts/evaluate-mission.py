@@ -104,7 +104,7 @@ def run_evaluation() -> int:
     check_item(8, "접속 방식(A 브라우저 / B 헬스체크) 선택 이유 및 보안·운영 장단점 명시", ok8, "README.md 3장 > 방식 (A)/(B) 보안·운영 장단점 및 HTTPS/WAF 권고 비교")
 
     # #9: 리소스 태그 네이밍 규칙(Name/Project/Owner/Env/CostCenter) 표준화
-    ok9 = ("COMMON_TAGS=" in prov) and ("Project=codyssey-cloud" in prov) and ("CostCenter" in readme)
+    ok9 = ("COMMON_TAGS=" in prov) and ("Key=Project,Value=codyssey-cloud" in prov) and ("CostCenter" in readme)
     check_item(9, "표준 태그 네이밍 규칙(Name/Project/Owner/Env/CostCenter) 정의 및 스크립트 적용", ok9, "README.md 표준 태그 표 + scripts/provision-aws.sh COMMON_TAGS 일괄 적용")
 
     # #10: Public route(0.0.0.0/0 -> IGW) 생성 및 실수 삭제 시 영향 범위·한 줄 복구 명령
