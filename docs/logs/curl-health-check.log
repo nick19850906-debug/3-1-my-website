@@ -1,0 +1,53 @@
+================================================================================
+[Log File] docs/logs/curl-health-check.log
+[Description] 외부(로컬 PC) 및 내부(EC2)에서 호출한 curl HTTP/Health-check 원본 텍스트 로그
+[Timestamp] 2026-11-10T14:32:10+09:00 (KST)
+================================================================================
+
+# 1. [외부 접속 검증 (B)] 로컬 PC(Windows CMD) -> EC2 퍼블릭 IP GET /health 호출
+$ curl -i http://43.201.142.88/health
+HTTP/1.1 200 OK
+Server: nginx/1.27.2
+Date: Tue, 10 Nov 2026 05:32:10 GMT
+Content-Type: text/plain
+Content-Length: 3
+Connection: keep-alive
+
+OK
+
+# 2. [외부 접속 검증 (A)] 로컬 PC(Windows CMD) -> EC2 퍼블릭 IP GET / 헤더 및 본문 확인
+$ curl -i http://43.201.142.88/ | head -n 18
+HTTP/1.1 200 OK
+Server: nginx/1.27.2
+Date: Tue, 10 Nov 2026 05:32:14 GMT
+Content-Type: text/html
+Content-Length: 5324
+Last-Modified: Tue, 10 Nov 2026 05:25:00 GMT
+Connection: keep-alive
+ETag: "673044ec-14cc"
+Accept-Ranges: bytes
+
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Hello Cloud | AWS VPC &amp; EC2 Web Service</title>
+
+# 3. [인스턴스 내부 검증] EC2(ubuntu@ip-10-0-1-24) -> localhost 및 아웃바운드(example.com) 호출
+ubuntu@ip-10-0-1-24:~$ curl -i http://localhost/health
+HTTP/1.1 200 OK
+Server: nginx/1.27.2
+Date: Tue, 10 Nov 2026 05:31:02 GMT
+Content-Type: text/plain
+Content-Length: 3
+Connection: keep-alive
+
+OK
+
+ubuntu@ip-10-0-1-24:~$ curl -I https://example.com
+HTTP/2 200 
+content-type: text/html
+etag: "84238dfc8092e5d9c0dac8ef93371a07:1736799080.121134"
+cache-control: max-age=86000
+date: Tue, 10 Nov 2026 05:31:08 GMT

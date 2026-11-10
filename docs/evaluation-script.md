@@ -93,10 +93,28 @@
 **[화면 조작]** [`docs/cleanup-checklist.md`](./cleanup-checklist.md) 파일을 화면에 띄웁니다.
 
 > **🗣️ 발표 대본 (그대로 읽으세요):**  
-> "마지막 네 번째 결과물인 **리소스 정리 체크리스트([`docs/cleanup-checklist.md`](./cleanup-checklist.md))** 입니다.  
+> "네 번째 결과물인 **리소스 정리 체크리스트([`docs/cleanup-checklist.md`](./cleanup-checklist.md))** 입니다.  
 > 클라우드에서는 실습이 끝난 뒤 리소스를 방치하면 예상치 못한 과금이 발생합니다. 특히 인스턴스를 단순 중지(`Stopped`)만 하면 **EBS 볼륨 요금**이 계속 나가고, 연결 해제된 **Elastic IP**도 시간당 요금이 부과됩니다.  
 > 또한 AWS 리소스는 부모-자식 의존성이 있어서 바깥쪽 VPC부터 지우려 하면 `DependencyViolation` 에러가 발생합니다.  
-> 그래서 저는 생성의 역순인 **① EC2 인스턴스 Terminate(종료) → ② Elastic IP 해제 및 미사용 EBS 볼륨 삭제 → ③ Internet Gateway 분리(Detach) 및 삭제 → ④ Subnet, Route Table, Security Group 삭제 → ⑤ VPC 최종 삭제** 순서로 모든 리소스를 정리했고, Billing 대시보드에서 이번 달 예상 청구 금액이 **`$0.00`** 임을 최종 확인했습니다."
+> 그래서 저는 [`scripts/cleanup-aws.sh`](../scripts/cleanup-aws.sh)에 10초 간격 3회 자동 재시도(`retry_cmd`)와 실행 로그 자동 저장([`docs/logs/cleanup-execution.log`](./logs/cleanup-execution.log))을 적용하여, 생성의 역순인 **① EC2 인스턴스 Terminate(종료) → ② Elastic IP 해제 및 미사용 EBS 볼륨 삭제 → ③ Internet Gateway 분리(Detach) 및 삭제 → ④ Subnet, Route Table, Security Group 삭제 → ⑤ VPC 최종 삭제** 순서로 모든 리소스를 정리했고, Billing 대시보드에서 이번 달 예상 청구 금액이 **`$0.00`** 임을 최종 확인했습니다."
+
+---
+
+## 📈 [파트 5] 확장성 대응 — 병목 확인 절차 및 ALB 도입·구성 지침 설명 대본 (평가 항목 #16)
+
+**[화면 조작]** [`README.md`](../README.md)의 **5. 확장성 대응(병목 확인 절차) 및 ALB 도입·구성 지침** 또는 [`docs/scalability-and-alb-guide.md`](./scalability-and-alb-guide.md)를 화면에 띄웁니다.
+
+> **[🧠 비전공자 속마음 메모 (일상 비유)]**
+> - **병목 확인:** 1인 식당(`t3.micro`)에 손님이 몰려 음식이 늦게 나올 때, **화구(CPU)가 부족한지, 식탁(Memory)이 부족한지, 출입문(Network 소켓)이 막혔는지** 먼저 진단하는 것!
+> - **ALB (Application Load Balancer):** 매장 입구에 **'지배인(ALB)'** 을 세워서 2개 이상의 지점(`ap-northeast-2a`, `ap-northeast-2c` 다중 EC2) 중 한가하고 건강한(`GET /health -> 200 OK`) 주방으로만 손님을 골고루 나눠 보내는 장치!
+> - **보안 그룹 체이닝 (`ALB-SG` -> `EC2-SG`):** 손님이 지배인(`ALB`)을 거치지 않고 주방 뒷문(`EC2 퍼블릭 IP`)으로 몰래 들어오지 못하도록, **주방 문(`EC2-SG`)은 오직 지배인(`ALB-SG`)에게만 열어주는 보안 기법!**
+
+> **🗣️ 발표 대본 (그대로 읽으세요):**  
+> "마지막으로 **서비스 트래픽 증가 시 확장성 대응 및 ALB 도입 지침([`docs/scalability-and-alb-guide.md`](./scalability-and-alb-guide.md))** 입니다.  
+> 단일 `t3.micro` 인스턴스 운영 중 응답 지연이 발생하면, 먼저 **① CloudWatch `CPUUtilization`(80% 초과 여부) 및 `uptime`, ② OS 가용 메모리(`free -m`)와 스왑 발생 여부, ③ `ss -s` 및 Nginx 에러 로그의 동시 연결(`worker_connections`) 포화 여부, ④ EBS 디스크 `iostat` 지연 시간**의 4단계 지표로 병목을 진단합니다.  
+> 컴퓨트나 연결 병목이 확인되면 무중단 수평 확장(Scale-out)을 위해 앞단에 **ALB(Application Load Balancer)** 를 도입합니다.  
+> - **구성 측면**에서는 가용영역 2곳(`2a`, `2c`)의 Public Subnet에 ALB를 배치하고, **보안 그룹 체이닝**을 적용해 `ALB-SG`만 외부 `80/443`을 열고 `EC2-SG`의 80번 포트는 오직 `ALB-SG`로부터만 허용하여 직접 우회 접속을 차단합니다. 또한 Target Group의 헬스체크 경로로 우리가 만든 **`GET /health` (`200 OK`)** 를 연결해 장애 인스턴스를 자동 격리합니다.  
+> - **비용 측면**에서는 ALB가 시간당 고정 요금(약 `$0.0252/시간`, 월 약 `$18.4`)과 LCU 사용량 요금이 부과되므로, 실습 정리 시 EC2뿐만 아니라 ALB와 Target Group도 반드시 함께 삭제해야 과금을 예방할 수 있습니다."
 
 ---
 
@@ -135,3 +153,4 @@
 ### Q7. "만약 지금 이 저장소가 미션 요구사항을 다 만족하는지 바로 검증해 볼 수 있나요?"
 - **모범 답변:**  
   "네! 제가 평가 자리에서 바로 모든 제출물과 설정값을 자동 검증할 수 있도록 [`scripts/evaluate-mission.py`](../scripts/evaluate-mission.py) 스크립트를 준비해 두었습니다. 터미널에서 `python scripts/evaluate-mission.py`를 실행하면 필수 제출물 4종, 보안 그룹/IAM 최소권한 규칙, 보너스 Docker 설정까지 즉시 점검하여 결과를 보여줍니다!"
+

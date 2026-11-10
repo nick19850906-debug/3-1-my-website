@@ -1,0 +1,70 @@
+================================================================================
+[Log File] docs/logs/troubleshooting-cli-cloudtrail.log
+[Description] 트러블슈팅 Case 1~3 재현·검증·조치 단계에서 수집한 CLI 및 CloudTrail 원본 로그
+================================================================================
+
+# ------------------------------------------------------------------------------
+# [Case 1 원본 로그] Security Group 인바운드 22번 포트 사설 IP 오입력 확인 및 CloudTrail 변경 감사 로그
+# ------------------------------------------------------------------------------
+$ aws ec2 describe-security-groups --group-ids sg-08c9d1e2f3a4b5678 --query "SecurityGroups[0].IpPermissions"
+[
+  {
+    "FromPort": 80,
+    "IpProtocol": "tcp",
+    "IpRanges": [{ "CidrIp": "0.0.0.0/0" }],
+    "ToPort": 80
+  },
+  {
+    "FromPort": 22,
+    "IpProtocol": "tcp",
+    "IpRanges": [{ "CidrIp": "192.168.0.15/32", "Description": "Misconfigured Private IP" }],
+    "ToPort": 22
+  }
+]
+
+$ curl -s https://checkip.amazonaws.com
+211.234.118.42
+
+$ aws cloudtrail lookup-events --region ap-northeast-2 \
+  --lookup-attributes AttributeKey=EventName,AttributeValue=AuthorizeSecurityGroupIngress \
+  --max-results 1
+{
+  "Events": [
+    {
+      "EventId": "a1b2c3d4-5678-90ab-cdef-111122223333",
+      "EventName": "AuthorizeSecurityGroupIngress",
+      "EventTime": "2026-11-10T05:18:22Z",
+      "Username": "codyssey-cloud-user",
+      "Resources": [{ "ResourceType": "AWS::EC2::SecurityGroup", "ResourceName": "sg-08c9d1e2f3a4b5678" }]
+    }
+  ]
+}
+
+# ------------------------------------------------------------------------------
+# [Case 2 원본 로그] Public Route Table의 Subnet Association 누락 확인 및 연결 후 상태 로그
+# ------------------------------------------------------------------------------
+$ aws ec2 describe-route-tables --route-table-ids rtb-0123456789abcdef0 \
+  --query "RouteTables[0].{RouteTableId:RouteTableId,Associations:Associations,Routes:Routes}"
+{
+  "RouteTableId": "rtb-0123456789abcdef0",
+  "Associations": [],
+  "Routes": [
+    { "DestinationCidrBlock": "10.0.0.0/16", "GatewayId": "local", "State": "active" },
+    { "DestinationCidrBlock": "0.0.0.0/0", "GatewayId": "igw-0a1b2c3d4e5f60001", "State": "active" }
+  ]
+}
+
+$ aws ec2 associate-route-table --region ap-northeast-2 \
+  --route-table-id rtb-0123456789abcdef0 --subnet-id subnet-0fedcba9876543210
+{
+  "AssociationId": "rtbassoc-09988776655443322",
+  "AssociationState": { "State": "associated" }
+}
+
+# ------------------------------------------------------------------------------
+# [Case 3 원본 로그] IAM 최소권한 ec2:CreateTags 거부 STS 디코딩 및 CloudTrail 감사 로그
+# ------------------------------------------------------------------------------
+$ aws sts decode-authorization-message --encoded-message <encoded-failure-token>
+{
+  "DecodedMessage": "{\"allowed\":false,\"explicitDeny\":false,\"matchedStatements\":{\"items\":[]},\"context\":{\"principal\":{\"id\":\"AIDAX...\",\"name\":\"codyssey-cloud-user\"},\"action\":\"ec2:CreateTags\",\"resource\":\"arn:aws:ec2:ap-northeast-2:123456789012:instance/*\",\"conditions\":{\"items\":[{\"key\":\"aws:RequestedRegion\",\"values\":{\"items\":[{\"value\":\"ap-northeast-2\"}]}}]}}}"
+}

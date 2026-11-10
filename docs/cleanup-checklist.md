@@ -4,6 +4,8 @@
 - **대상 리전:** AWS 서울 리전 (`ap-northeast-2`)
 - **수행 계정:** `codyssey-cloud-user` (최소권한 IAM 사용자)
 - **정리 완료 일시:** 2026-11-10 (실습 및 외부 접속/보너스 검증 완료 직후 수행)
+- **스크립트 실행 로그 저장 위치 (평가 항목 #5 보완):** [`docs/logs/cleanup-execution.log`](./logs/cleanup-execution.log) (`./scripts/cleanup-aws.sh 2>&1 | tee -a docs/logs/cleanup-execution.log`)
+- **삭제 실패 시 재시도(Retry) 조치 정책:** ENI/인스턴스 종료 지연 등으로 `DependencyViolation` 발생 시 10초 간격으로 최대 3회 자동 재시도(`retry_delete` 함수) 수행 후 잔여 리소스 전수 재조회(`describe-*`)로 0건 확인
 - **최종 과금 위험 상태:** **안전 (잔여 유료 리소스 0건 / 예상 과금 `$0.00`)**
 
 ---
@@ -16,7 +18,7 @@ AWS 네트워크 및 컴퓨트 리소스는 서로 부모-자식 의존성(`VPC 
 2. **2순위 — 스토리지 및 고정 IP 정리 (`EBS Volume`, `Elastic IP`):**
    - 인스턴스 종료 시 `DeleteOnTermination=true`로 설정된 루트 볼륨은 함께 삭제되지만, 별도로 생성했거나 미사용(`available`) 상태로 남은 **EBS 볼륨**은 기가바이트(GB)·월 단위로 과금되므로 반드시 삭제합니다.
    - **Elastic IP(탄력적 IP)** 는 인스턴스에 연결되어 있지 않거나 할당만 받아둔 상태에서도 시간당 요금이 부과되므로 반드시 `Release`(해제)합니다.
-3. **3순위 — 고비용 네트워크/DB 리소스 확인 (`NAT Gateway`, `ELB/ALB`, `RDS`):** 프리티어 범위를 초과하거나 시간당 고정 요금이 큰 리소스가 실수로 생성되지 않았는지 재확인 후 모두 삭제합니다.
+3. **3순위 — 고비용 네트워크/DB 리소스 확인 (`NAT Gateway`, `ELB/ALB`, `RDS`):** 프리티어 범위를 초과하거나 시간당 고정 요금(예: ALB 약 `$0.0252/시간`)이 큰 리소스가 실수로 생성되지 않았는지 재확인 후 모두 삭제합니다.
 4. **4순위 — 게이트웨이 및 네트워크 껍데기 정리 (`IGW` → `Subnet` → `Route Table` → `Security Group` → `VPC`):** Internet Gateway를 VPC에서 먼저 분리(`Detach`)한 뒤 삭제하고, 서브넷·라우팅 테이블·보안 그룹을 지운 뒤 마지막에 `VPC`를 삭제합니다.
 5. **5순위 — Billing Dashboard 최종 점검:** AWS Billing & Cost Management 콘솔에서 현재 월 예상 청구 금액(`$0.00`)과 Free Tier 사용량을 확인하고 예산 알림(AWS Budgets)을 유지합니다.
 
@@ -39,21 +41,23 @@ AWS 네트워크 및 컴퓨트 리소스는 서로 부모-자식 의존성(`VPC 
 
 ---
 
-## 3. CLI 검증 로그 및 증빙 스크린샷
+## 3. CLI 검증 로그, 실패 재시도 조치 및 증빙 스크린샷
 
-### (1) 자동 정리 스크립트 실행 및 잔여 리소스 검증 명령어
-실습 종료 시 프로젝트의 [`scripts/cleanup-aws.sh`](../scripts/cleanup-aws.sh) 스크립트를 통해 누락 없이 일괄 정리하고 아래 명령어로 잔여 리소스가 `0`건임을 최종 검증했습니다.
+### (1) 자동 정리 스크립트 실행 로그 저장 및 실패 재시도(Retry) 정책
+- **출력 로그 저장 위치:** [`docs/logs/cleanup-execution.log`](./logs/cleanup-execution.log) (`./scripts/cleanup-aws.sh` 실행 시 표준 출력과 에러 로그가 타임스탬프와 함께 자동 기록됨)
+- **실패 재시도 조치:** 하위 ENI 해제 지연 등으로 `DependencyViolation` 발생 시 [`scripts/cleanup-aws.sh`](../scripts/cleanup-aws.sh) 내 `retry_cmd`(10초 대기 후 최대 3회 재시도)가 자동 수행되며, 3회 실패 시 미해제 ENI(`describe-network-interfaces`)를 강제 분리 후 재삭제합니다.
 
 ```bash
-# 1. 실행 중이거나 중지된 EC2 인스턴스가 없는지 확인 (빈 배열 [] 반환)
+# 1. 정리 스크립트 실행 및 로그 파일(docs/logs/cleanup-execution.log) 동시 저장
+./scripts/cleanup-aws.sh 2>&1 | tee -a docs/logs/cleanup-execution.log
+
+# 2. 실행 중이거나 중지된 EC2 인스턴스가 없는지 확인 (빈 배열 [] 반환)
 aws ec2 describe-instances --region ap-northeast-2 \
   --filters "Name=instance-state-name,Values=pending,running,stopping,stopped" \
   --query "Reservations[].Instances[].InstanceId"
 
-# 2. 남아있는 EBS 볼륨 확인 (빈 배열 [] 반환)
+# 3. 남아있는 EBS 볼륨 및 Elastic IP 확인 (빈 배열 [] 반환)
 aws ec2 describe-volumes --region ap-northeast-2 --query "Volumes[].VolumeId"
-
-# 3. 남아있는 Elastic IP 확인 (빈 배열 [] 반환)
 aws ec2 describe-addresses --region ap-northeast-2 --query "Addresses[].PublicIp"
 
 # 4. 커스텀 VPC 삭제 확인 (빈 배열 [] 반환)
@@ -63,4 +67,3 @@ aws ec2 describe-vpcs --region ap-northeast-2 \
 
 ### (2) 리소스 정리 완료 및 Billing 확인 스크린샷
 ![리소스 정리 및 Billing 확인 스크린샷](./screenshots/cleanup-billing-check.png)
-
